@@ -57,8 +57,12 @@ export class MedicalRecordsController {
   @Get('timeline/:patientId')
   @ApiOperation({ summary: 'Get medical history timeline for a patient' })
   @ApiResponse({ status: 200, description: 'Timeline retrieved successfully' })
-  async getTimeline(@Param('patientId') patientId: string, @Query('limit') limit?: number) {
-    return this.medicalRecordsService.getTimeline(patientId, limit || 50);
+  async getTimeline(
+    @Param('patientId') patientId: string,
+    @Query('limit') limit?: number,
+    @CurrentTenant('tenantId') tenantId?: string,
+  ) {
+    return this.medicalRecordsService.getTimeline(patientId, limit || 50, tenantId);
   }
 
   @Get(':id')
@@ -84,8 +88,11 @@ export class MedicalRecordsController {
   @Get(':id/versions')
   @ApiOperation({ summary: 'Get version history for a medical record' })
   @ApiResponse({ status: 200, description: 'Version history retrieved successfully' })
-  async getVersions(@Param('id') id: string) {
-    return this.medicalRecordsService.getVersions(id);
+  async getVersions(
+    @Param('id') id: string,
+    @CurrentTenant('tenantId') tenantId?: string,
+  ) {
+    return this.medicalRecordsService.getVersions(id, tenantId);
   }
 
   @Put(':id')
@@ -97,28 +104,41 @@ export class MedicalRecordsController {
     @Param('id') id: string,
     @Body() updateDto: UpdateMedicalRecordDto,
     @CurrentUser() user: any,
+    @CurrentTenant('tenantId') tenantId?: string,
     @Query('changeReason') changeReason?: string,
   ) {
     const userId = user?.id || '00000000-0000-0000-0000-000000000000';
     const userName = user?.email || 'System';
-    return this.medicalRecordsService.update(id, updateDto, userId, userName, changeReason);
+    return this.medicalRecordsService.update(id, updateDto, userId, userName, changeReason, tenantId);
   }
 
   @Put(':id/archive')
   @ApiOperation({ summary: 'Archive a medical record' })
   @ApiResponse({ status: 200, description: 'Medical record archived successfully' })
-  async archive(@Param('id') id: string, @CurrentUser() user: any) {
+  async archive(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @CurrentTenant('tenantId') tenantId?: string,
+  ) {
     const userId = user?.id || '00000000-0000-0000-0000-000000000000';
-    return this.medicalRecordsService.archive(id, userId, user?.email);
+    return this.medicalRecordsService.archive(id, userId, user?.email, tenantId);
   }
 
-  @Put(':id/restore')
-  @ApiOperation({ summary: 'Restore an archived medical record' })
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @CurrentTenant('tenantId') tenantId?: string,
+  ) {
+    const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+    return this.medicalRecordsService.restore(id, userId, user?.email, tenantId
   @ApiResponse({ status: 200, description: 'Medical record restored successfully' })
   async restore(@Param('id') id: string, @CurrentUser() user: any) {
+    const userI
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @CurrentTenant('tenantId') tenantId?: string,
+  ) {
     const userId = user?.id || '00000000-0000-0000-0000-000000000000';
-    return this.medicalRecordsService.restore(id, userId, user?.email);
-  }
+    await this.medicalRecordsService.delete(id, userId, user?.email, tenantId
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

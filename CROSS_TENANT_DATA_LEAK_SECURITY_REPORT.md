@@ -246,6 +246,74 @@ Some methods are missing intermediate parameters.
 
 ---
 
+## 7. HIGH: Read Model Rebuilds Cause Database Overload & Inconsistent Data
+
+**Risk Level**: HIGH  
+**Category**: Operational Security & Data Integrity
+
+### Problem Statement
+
+Rebuilds of read models (projections, caches, materialized views) can cause several critical issues:
+
+1. **Database Overload**: Full table scans and bulk writes during rebuild operations consume excessive database resources
+2. **Inconsistent Read Models**: During rebuild operations, some clients receive stale or partially-rebuilt data
+3. **Amplified Tenant Isolation Bypass**: If rebuild logic doesn't respect tenant boundaries, can inadvertently expose data across tenants
+4. **Extended Vulnerability Window**: Rebuilds requiring long-running transactions increase the window for exploitation
+
+### Specific Concerns
+
+**Concurrent Read Access During Rebuild**:
+```
+Timeline:
+T0: Rebuild starts, acquires read lock
+T1: Client A queries read model (gets old/partial data)
+T2: Rebuild writes new data
+T3: Client B queries read model (might see inconsistent mix of old/new)
+Tn: Rebuild completes, new state stabilized
+```
+
+**Database Connection Exhaustion**:
+- Long-running rebuild transactions hold connections
+- Connection pool exhausted → new requests queued or timeout
+- Service becomes non-responsive during high-load rebuilds
+- Cascading failures if multiple tenants trigger rebuilds simultaneously
+
+**Tenant Data Leakage Risk**:
+- If rebuild logic doesn't filter by tenant ID, could inadvertently load/expose data from other tenants
+- Partial rebuilds stopping mid-operation may leave inconsistent state visible to unauthorized tenants
+
+### Current Implementation Gaps
+
+- ⚠️ No analysis of rebuild operations in codebase for tenant filtering
+- ⚠️ No rate limiting or throttling on rebuild triggers
+- ⚠️ No isolation between tenant rebuilds (shared database)
+- ⚠️ No monitoring for rebuild duration or database impact
+- ⚠️ No consistent read model versioning/staging during rebuilds
+
+### Recommendations
+
+1. **Implement Rebuild Governance**:
+   - Add tenant ID filtering to all rebuild queries
+   - Per-tenant rebuild throttling (one active rebuild per tenant)
+   - Rebuild queue with backoff strategy
+
+2. **Improve Read Model Consistency**:
+   - Use staging tables: rebuild in parallel table, atomic swap on completion
+   - Add rebuild version tracking to identify stale data
+   - Implement eventual consistency protocol with version vectors
+
+3. **Monitor & Alert**:
+   - Track rebuild duration and database load impact
+   - Alert if rebuild exceeds SLA (e.g., > 5 minutes)
+   - Monitor connection pool exhaustion during rebuilds
+
+4. **Database-Level Safeguards**:
+   - Add statement timeouts for rebuild operations
+   - Implement rebuild query budget limits
+   - Use read-only replicas for rebuild source data if possible
+
+---
+
 ## Compliance Violations
 
 ### HIPAA

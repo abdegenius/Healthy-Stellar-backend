@@ -131,8 +131,9 @@ export class MedicalRecordsService {
     userId: string,
     userName?: string,
     changeReason?: string,
+    organizationId?: string,
   ): Promise<MedicalRecord> {
-    const record = await this.findOne(id);
+    const record = await this.findOne(id, undefined, organizationId);
 
     if (record.status === MedicalRecordStatus.DELETED) {
       throw new BadRequestException('Cannot update a deleted record');
@@ -268,23 +269,40 @@ export class MedicalRecordsService {
     };
   }
 
-  async getTimeline(patientId: string, limit: number = 50): Promise<MedicalHistory[]> {
+  async getTimeline(patientId: string, limit: number = 50, organizationId?: string): Promise<MedicalHistory[]> {
+    const where: any = { patientId };
+    
+    if (organizationId) {
+      where.organizationId = organizationId;
+    }
+
     return this.historyRepository.find({
-      where: { patientId },
+      where,
       order: { eventDate: 'DESC' },
       take: limit,
     });
   }
 
-  async getVersions(recordId: string): Promise<MedicalRecordVersion[]> {
+  async getVersions(recordId: string, organizationId?: string): Promise<MedicalRecordVersion[]> {
+    // Verify that the record belongs to the tenant
+    if (organizationId) {
+      const record = await this.medicalRecordRepository.findOne({
+        where: { id: recordId, organizationId },
+      });
+
+      if (!record) {
+        throw new NotFoundException(`Medical record with ID ${recordId} not found or does not belong to your organization`);
+      }
+    }
+
     return this.versionRepository.find({
       where: { medicalRecordId: recordId },
       order: { versionNumber: 'DESC' },
     });
   }
 
-  async archive(id: string, userId: string, userName?: string): Promise<MedicalRecord> {
-    const record = await this.findOne(id);
+  async archive(id: string, userId: string, userName?: string, organizationId?: string): Promise<MedicalRecord> {
+    const record = await this.findOne(id, undefined, organizationId);
 
     return this.dataSource.transaction(async (manager) => {
       record.status = MedicalRecordStatus.ARCHIVED;
@@ -309,8 +327,8 @@ export class MedicalRecordsService {
     });
   }
 
-  async restore(id: string, userId: string, userName?: string): Promise<MedicalRecord> {
-    const record = await this.findOne(id);
+  async restore(id: string, userId: string, userName?: string, organizationId?: string): Promise<MedicalRecord> {
+    const record = await this.findOne(id, undefined, organizationId);
 
     if (record.status !== MedicalRecordStatus.ARCHIVED) {
       throw new BadRequestException('Only archived records can be restored');
@@ -339,8 +357,8 @@ export class MedicalRecordsService {
     });
   }
 
-  async delete(id: string, userId: string, userName?: string): Promise<void> {
-    const record = await this.findOne(id);
+  async delete(id: string, userId: string, userName?: string, organizationId?: string): Promise<void> {
+    const record = await this.findOne(id, undefined, organizationId);
 
     await this.dataSource.transaction(async (manager) => {
       record.status = MedicalRecordStatus.DELETED;
