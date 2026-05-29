@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bullmq';
 import { GdprRequest, GdprRequestType, GdprRequestStatus } from '../entities/gdpr-request.entity';
@@ -16,6 +16,20 @@ export class GdprService {
   ) {}
 
   async createExportRequest(userId: string): Promise<GdprRequest> {
+    const existingRequest = await this.gdprRequestRepository.findOne({
+      where: {
+        userId,
+        type: GdprRequestType.EXPORT,
+        status: In([GdprRequestStatus.PENDING, GdprRequestStatus.IN_PROGRESS]),
+      },
+    });
+
+    if (existingRequest) {
+      throw new ConflictException(
+        'An export request is already pending or in progress for this user',
+      );
+    }
+
     const request = this.gdprRequestRepository.create({
       userId,
       type: GdprRequestType.EXPORT,
@@ -35,6 +49,20 @@ export class GdprService {
   }
 
   async createErasureRequest(userId: string): Promise<GdprRequest> {
+    const existingRequest = await this.gdprRequestRepository.findOne({
+      where: {
+        userId,
+        type: GdprRequestType.ERASURE,
+        status: In([GdprRequestStatus.PENDING, GdprRequestStatus.IN_PROGRESS]),
+      },
+    });
+
+    if (existingRequest) {
+      throw new ConflictException(
+        'An erasure request is already pending or in progress for this user',
+      );
+    }
+
     const request = this.gdprRequestRepository.create({
       userId,
       type: GdprRequestType.ERASURE,

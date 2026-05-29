@@ -3,6 +3,7 @@ import { GdprService } from '../services/gdpr.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { GdprRequest, GdprRequestType, GdprRequestStatus } from '../entities/gdpr-request.entity';
 import { getQueueToken } from '@nestjs/bull';
+import { ConflictException } from '@nestjs/common';
 
 describe('GdprService', () => {
   let service: GdprService;
@@ -11,6 +12,7 @@ describe('GdprService', () => {
     create: jest.fn().mockImplementation((dto) => ({ id: '123', ...dto })),
     save: jest.fn().mockImplementation((req) => Promise.resolve(req)),
     find: jest.fn().mockResolvedValue([{ id: '123', userId: 'user1' }]),
+    findOne: jest.fn().mockResolvedValue(null),
   };
 
   const mockGdprQueue = {
@@ -51,6 +53,28 @@ describe('GdprService', () => {
         userId: 'user1',
       });
     });
+
+    it('should throw ConflictException when PENDING export request exists', async () => {
+      mockGdprRequestRepo.findOne.mockResolvedValue({
+        id: 'existing-123',
+        userId: 'user1',
+        type: GdprRequestType.EXPORT,
+        status: GdprRequestStatus.PENDING,
+      });
+
+      await expect(service.createExportRequest('user1')).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw ConflictException when IN_PROGRESS export request exists', async () => {
+      mockGdprRequestRepo.findOne.mockResolvedValue({
+        id: 'existing-123',
+        userId: 'user1',
+        type: GdprRequestType.EXPORT,
+        status: GdprRequestStatus.IN_PROGRESS,
+      });
+
+      await expect(service.createExportRequest('user1')).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('createErasureRequest', () => {
@@ -64,6 +88,28 @@ describe('GdprService', () => {
         requestId: req.id,
         userId: 'user1',
       });
+    });
+
+    it('should throw ConflictException when PENDING erasure request exists', async () => {
+      mockGdprRequestRepo.findOne.mockResolvedValue({
+        id: 'existing-456',
+        userId: 'user1',
+        type: GdprRequestType.ERASURE,
+        status: GdprRequestStatus.PENDING,
+      });
+
+      await expect(service.createErasureRequest('user1')).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw ConflictException when IN_PROGRESS erasure request exists', async () => {
+      mockGdprRequestRepo.findOne.mockResolvedValue({
+        id: 'existing-456',
+        userId: 'user1',
+        type: GdprRequestType.ERASURE,
+        status: GdprRequestStatus.IN_PROGRESS,
+      });
+
+      await expect(service.createErasureRequest('user1')).rejects.toThrow(ConflictException);
     });
   });
 
