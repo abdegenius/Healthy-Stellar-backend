@@ -6,17 +6,9 @@ import { Queue } from 'bull';
 import { Logger } from '@nestjs/common';
 import { RecordUploadedEvent, AccessGrantedEvent, AccessRevokedEvent } from './domain-events';
 import { CheckpointService } from '../checkpoint/checkpoint.service';
+import { AnalyticsSnapshot } from '../entities/analytics-snapshot.entity';
 
 type AnalyticsEvent = RecordUploadedEvent | AccessGrantedEvent | AccessRevokedEvent;
-
-class AnalyticsSnapshot {
-  id: string;
-  patientId: string;
-  totalRecords: number;
-  activeGrants: number;
-  revokedGrants: number;
-  lastEventAt: Date;
-}
 
 const PROJECTOR_NAME = 'AnalyticsProjector';
 

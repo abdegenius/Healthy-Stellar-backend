@@ -6,17 +6,7 @@ import { Queue } from 'bull';
 import { Logger } from '@nestjs/common';
 import { RecordUploadedEvent, RecordAmendedEvent } from './domain-events';
 import { CheckpointService } from '../checkpoint/checkpoint.service';
-
-// Stub entity — replace with actual MedicalRecord read-model entity
-class MedicalRecordReadModel {
-  id: string;
-  patientId: string;
-  cid: string;
-  recordType: string;
-  uploadedBy: string;
-  latestVersion: number;
-  updatedAt: Date;
-}
+import { MedicalRecordReadModel } from '../entities/medical-record-read.entity';
 
 const PROJECTOR_NAME = 'RecordProjector';
 

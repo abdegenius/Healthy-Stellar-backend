@@ -6,17 +6,7 @@ import { Queue } from 'bull';
 import { Logger } from '@nestjs/common';
 import { AccessGrantedEvent, AccessRevokedEvent } from './domain-events';
 import { CheckpointService } from '../checkpoint/checkpoint.service';
-
-class AccessGrantReadModel {
-  id: string;
-  patientId: string;
-  providerId: string;
-  grantedBy: string;
-  isActive: boolean;
-  expiresAt: Date | null;
-  grantedAt: Date;
-  revokedAt: Date | null;
-}
+import { AccessGrantReadModel } from '../entities/access-grant-read.entity';
 
 const PROJECTOR_NAME = 'AccessGrantProjector';
 
