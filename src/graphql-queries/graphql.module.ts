@@ -37,20 +37,44 @@ import { GdprModule } from '../gdpr/gdpr.module';
 import { DevicesModule } from '../devices/devices.module';
 import { AuthModule } from '../auth/auth.module';
 
+// Throttling
+import { GraphQLSubscriptionLimiter } from '../common/throttler/graphql-subscription-limiter';
+
 @Module({
   imports: [
-    GraphQLModule.forRoot<ApolloDriverConfig>({
+    GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: true,
-      sortSchema: true,
-      playground: process.env.NODE_ENV !== 'production',
-      introspection: process.env.NODE_ENV !== 'production',
-      context: ({ req }) => ({ req }),
-      /**
-       * graphql-upload must be disabled in Apollo config because we
-       * handle it via the Express middleware below.
-       */
-      uploads: false,
+      useFactory: (limiter: GraphQLSubscriptionLimiter) => ({
+        autoSchemaFile: true,
+        sortSchema: true,
+        playground: process.env.NODE_ENV !== 'production',
+        introspection: process.env.NODE_ENV !== 'production',
+        context: ({ req }) => ({ req }),
+        uploads: false,
+        subscriptions: {
+          'graphql-ws': {
+            onConnect: async (context) => {
+              const request = context.extra?.request || context.connectionParams;
+              const userId = (context.connectionParams as any)?.userId;
+              const tenantId = (context.connectionParams as any)?.tenantId;
+
+              const { allowed, reason } = await limiter.checkLimit({ userId, tenantId });
+
+              if (!allowed) {
+                throw new Error(`Subscription rejected: ${reason}`);
+              }
+
+              return true;
+            },
+            onDisconnect: async (context) => {
+              const userId = (context.connectionParams as any)?.userId;
+              const tenantId = (context.connectionParams as any)?.tenantId;
+              await limiter.releaseConnection({ userId, tenantId });
+            },
+          },
+        },
+      }),
+      inject: [GraphQLSubscriptionLimiter],
     }),
 
     TypeOrmModule.forFeature([IdempotencyEntity]),
@@ -83,6 +107,7 @@ import { AuthModule } from '../auth/auth.module';
 
     // Services
     IdempotencyService,
+    GraphQLSubscriptionLimiter,
 
     // Guards
     GqlAuthGuard,
