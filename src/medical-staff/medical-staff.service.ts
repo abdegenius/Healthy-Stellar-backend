@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, MoreThan, Between } from 'typeorm';
@@ -10,6 +11,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class MedicalStaffService {
+  private logger = new Logger(MedicalStaffService.name);
   constructor(
     @InjectRepository(Doctor)
     private doctorRepo: Repository<Doctor>,
@@ -160,7 +162,7 @@ export class MedicalStaffService {
       await this.doctorRepo.save(doctor);
 
       // Here you would trigger notification service
-      console.log(
+      this.logger.warn(
         `ALERT: License expiring for Dr. ${doctor.firstName} ${doctor.lastName} on ${doctor.licenseExpiryDate}`,
       );
     }
@@ -177,7 +179,7 @@ export class MedicalStaffService {
       doctor.status = StaffStatus.SUSPENDED;
       await this.doctorRepo.save(doctor);
 
-      console.log(`CRITICAL: License EXPIRED for Dr. ${doctor.firstName} ${doctor.lastName}`);
+      this.logger.error(`CRITICAL: License EXPIRED for Dr. ${doctor.firstName} ${doctor.lastName}`);
     }
   }
 

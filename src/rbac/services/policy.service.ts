@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions, FindOneOptions } from 'typeorm';
 import {
@@ -29,6 +29,8 @@ export interface UpdatePolicyDto extends Partial<CreatePolicyDto> {
 
 @Injectable()
 export class PolicyService {
+  private logger = new Logger(PolicyService.name);
+
   constructor(
     @InjectRepository(Policy)
     private readonly policyRepository: Repository<Policy>,
@@ -129,7 +131,7 @@ export class PolicyService {
         createdPolicies.push(policy);
       } catch (error) {
         // Log error but continue with other policies
-        console.error(`Failed to create policy '${policyDto.name}':`, error.message);
+        this.logger.error(`Failed to create policy '${policyDto.name}':`, error.message);
       }
     }
 

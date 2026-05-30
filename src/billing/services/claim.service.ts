@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, Between } from 'typeorm';
 import { InsuranceClaim } from '../entities/insurance-claim.entity';
@@ -16,6 +16,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ClaimService {
+  private logger = new Logger(ClaimService.name);
+
   constructor(
     @InjectRepository(InsuranceClaim)
     private readonly claimRepository: Repository<InsuranceClaim>,
@@ -320,7 +322,7 @@ export class ClaimService {
         await this.claimRepository.save(claim);
         updatedClaims.push(claim);
       } catch (error) {
-        console.error(`Error processing claim ${claimData.claimNumber}:`, error);
+        this.logger.error(`Error processing claim ${claimData.claimNumber}:`, error);
       }
     }
 

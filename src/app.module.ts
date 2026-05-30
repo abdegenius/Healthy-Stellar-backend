@@ -72,6 +72,7 @@ import { IdempotencyModule } from './idempotency/idempotency.module';
 import { IdempotencyInterceptor } from './idempotency/idempotency.interceptor';
 import { DlqModule } from './dlq/dlq.module';
 import { OperatorRunbookModule } from './operator-runbook/operator-runbook.module';
+import { IncidentModule } from './incident/incident.module';
 
 @Module({
   imports: [
@@ -151,6 +152,7 @@ import { OperatorRunbookModule } from './operator-runbook/operator-runbook.modul
     IdempotencyModule,
     DlqModule,
     OperatorRunbookModule,
+    IncidentModule,
     EventEmitterModule.forRoot(),
  main
   ],

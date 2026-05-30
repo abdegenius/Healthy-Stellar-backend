@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import {
@@ -10,6 +10,8 @@ import { Appointment } from '../entities/appointment.entity';
 
 @Injectable()
 export class ReminderService {
+  private logger = new Logger(ReminderService.name);
+
   constructor(
     @InjectRepository(AppointmentReminder)
     private reminderRepository: Repository<AppointmentReminder>,
@@ -96,16 +98,16 @@ export class ReminderService {
     // Simulate sending reminder based on type
     switch (reminder.type) {
       case ReminderType.EMAIL:
-        console.log(`Sending email reminder to ${reminder.recipient}: ${reminder.message}`);
+        this.logger.log(`Sending email reminder to ${reminder.recipient}: ${reminder.message}`);
         break;
       case ReminderType.SMS:
-        console.log(`Sending SMS reminder to ${reminder.recipient}: ${reminder.message}`);
+        this.logger.log(`Sending SMS reminder to ${reminder.recipient}: ${reminder.message}`);
         break;
       case ReminderType.PUSH_NOTIFICATION:
-        console.log(`Sending push notification to ${reminder.recipient}: ${reminder.message}`);
+        this.logger.log(`Sending push notification to ${reminder.recipient}: ${reminder.message}`);
         break;
       case ReminderType.PHONE_CALL:
-        console.log(`Making phone call to ${reminder.recipient}: ${reminder.message}`);
+        this.logger.log(`Making phone call to ${reminder.recipient}: ${reminder.message}`);
         break;
     }
   }

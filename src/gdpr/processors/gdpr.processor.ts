@@ -249,6 +249,16 @@ export class GdprProcessor extends WorkerHost implements OnModuleInit {
         this.logger.warn(`Failed to notify DPO: ${e.message}`);
       }
 
+      // Notify data subject that erasure is complete (GDPR Art. 12)
+      if (dataSubjectEmail) {
+        await this.notificationsService.sendEmail(
+          dataSubjectEmail,
+          'Your data erasure request has been completed',
+          'ErasureConfirmation',
+          { requestId: data.requestId },
+        );
+      }
+
       await this.gdprRequestRepository.update(data.requestId, {
         status: GdprRequestStatus.COMPLETED,
         completedAt: new Date(),
