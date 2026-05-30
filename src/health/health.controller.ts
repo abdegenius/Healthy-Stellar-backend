@@ -10,8 +10,10 @@ import { RegionalIpfsService } from '../data-residency/services/regional-ipfs.se
 import { DataResidencyRegion } from '../enums/data-residency.enum';
 import { DetailedHealthIndicator } from './indicators/detailed-health.indicator';
 import { IpfsHealthIndicator } from './indicators/ipfs.health';
+import { QueueHealthIndicator } from './indicators/queue.health';
 import { RedisHealthIndicator } from './indicators/redis.health';
 import { StellarHealthIndicator } from './indicators/stellar.health';
+import { SyntheticProbeIndicator } from './indicators/synthetic-probe.indicator';
 
 enum DependencyLevel {
   CRITICAL = 'critical', // Must be healthy for system to be ready
@@ -51,6 +53,11 @@ export class HealthController {
       level: DependencyLevel.IMPORTANT,
       check: () => this.ipfs.isHealthy('ipfs'),
     },
+    {
+      name: 'queues',
+      level: DependencyLevel.IMPORTANT,
+      check: () => this.queues.isHealthy('queues'),
+    },
   ];
 
   constructor(
@@ -58,6 +65,7 @@ export class HealthController {
     private db: TypeOrmHealthIndicator,
     private redis: RedisHealthIndicator,
     private ipfs: IpfsHealthIndicator,
+    private queues: QueueHealthIndicator,
     private stellar: StellarHealthIndicator,
     private detailedHealth: DetailedHealthIndicator,
     private syntheticProbe: SyntheticProbeIndicator,

@@ -34,6 +34,16 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
           db: configService.get('REDIS_DB', 0),
           maxRetriesPerRequest: null,
           retryStrategy: createRedisRetryStrategy(),
+          reconnectOnError: (err: Error) => {
+            // Reconnect on READONLY errors (e.g. Redis failover)
+            return err.message.includes('READONLY');
+          },
+        },
+        defaultJobOptions: {
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: { count: 1000 },
+          removeOnFail: { count: 5000 },
         },
       }),
       inject: [ConfigService],

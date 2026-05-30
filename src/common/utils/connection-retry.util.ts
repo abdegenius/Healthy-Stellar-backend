@@ -24,13 +24,15 @@ export function createTypeOrmRetryCallback(
   };
 }
 
+const REDIS_BASE_DELAY_MS = 500;
+const REDIS_MAX_DELAY_MS = 30_000;
+
 /**
- * Returns an ioredis-compatible `retryStrategy` callback.
- * Logs each attempt, exits with code 1 after MAX_RETRIES exhausted.
+ * Returns an ioredis-compatible `retryStrategy` callback with exponential backoff.
+ * Exits with code 1 after MAX_RETRIES exhausted.
  */
 export function createRedisRetryStrategy(
   maxRetries = MAX_RETRIES,
-  delayMs = RETRY_DELAY_MS,
 ): (times: number) => number | null {
   return (times: number): number | null => {
     console.error(`[Redis] Connection attempt ${times} failed.`);
@@ -40,6 +42,7 @@ export function createRedisRetryStrategy(
       );
       process.exit(1);
     }
-    return delayMs;
+    const delay = Math.min(REDIS_BASE_DELAY_MS * Math.pow(2, times - 1), REDIS_MAX_DELAY_MS);
+    return delay;
   };
 }

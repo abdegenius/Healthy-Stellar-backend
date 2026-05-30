@@ -110,6 +110,26 @@ export const SubscriptionsActiveGauge = makeGaugeProvider({
   help: 'Current number of live GraphQL subscription iterators',
 });
 
+// ── Stellar transaction recovery metrics (issue #570) ─────────────────────────
+
+export const StellarTxAttemptsCounter = makeCounterProvider({
+  name: 'stellar_tx_attempts_total',
+  help: 'Total number of Stellar transaction submission attempts',
+  labelNames: ['operation'],
+});
+
+export const StellarTxRetriesCounter = makeCounterProvider({
+  name: 'stellar_tx_retries_total',
+  help: 'Total number of Stellar transaction retry attempts',
+  labelNames: ['operation', 'error_type'],
+});
+
+export const StellarTxFailuresCounter = makeCounterProvider({
+  name: 'stellar_tx_failures_total',
+  help: 'Total number of Stellar transactions that permanently failed',
+  labelNames: ['operation', 'error_type'],
+});
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -148,6 +168,14 @@ export class CustomMetricsService {
     public activeProvidersGauge: Gauge<string>,
     @InjectMetric('subscriptions_active')
     public subscriptionsActiveGauge: Gauge<string>,
+
+    // Stellar recovery metrics
+    @InjectMetric('stellar_tx_attempts_total')
+    public stellarTxAttemptsCounter: Counter<string>,
+    @InjectMetric('stellar_tx_retries_total')
+    public stellarTxRetriesCounter: Counter<string>,
+    @InjectMetric('stellar_tx_failures_total')
+    public stellarTxFailuresCounter: Counter<string>,
   ) {}
 
   // ── Existing helpers ────────────────────────────────────────────────────────
@@ -230,5 +258,17 @@ export class CustomMetricsService {
 
   setActiveProviders(count: number) {
     this.activeProvidersGauge.set(count);
+  }
+
+  recordStellarTxAttempt(operation: string) {
+    this.stellarTxAttemptsCounter.inc({ operation });
+  }
+
+  recordStellarTxRetry(operation: string, errorType: string) {
+    this.stellarTxRetriesCounter.inc({ operation, error_type: errorType });
+  }
+
+  recordStellarTxFailure(operation: string, errorType: string) {
+    this.stellarTxFailuresCounter.inc({ operation, error_type: errorType });
   }
 }

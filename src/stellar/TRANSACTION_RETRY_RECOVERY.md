@@ -24,6 +24,7 @@ This system provides robust transaction submission capabilities for Stellar bloc
 - ✅ Comprehensive error classification
 - ✅ Transaction persistence and recovery
 - ✅ Health monitoring and statistics
+- ✅ Prometheus observability metrics
 
 ## Configuration
 
@@ -466,11 +467,45 @@ async anchorRecord(patientId: string, cid: string) {
 - Exponential backoff reduces network pressure
 - Consider rate limiting if submitting many transactions
 
+## Observability
+
+### Prometheus Metrics
+
+The following counters are emitted to `/metrics` by `CustomMetricsService`:
+
+| Metric | Labels | Description |
+|---|---|---|
+| `stellar_tx_attempts_total` | `operation` | Every submission attempt (first try + retries) |
+| `stellar_tx_retries_total` | `operation`, `error_type` | Retry attempts after a transient failure |
+| `stellar_tx_failures_total` | `operation`, `error_type` | Permanent failures (all retries exhausted) |
+
+### Grafana Alert (suggested)
+
+Create a Grafana alert rule on `stellar_tx_failures_total` to page on-call when the failure rate spikes:
+
+```yaml
+# Example Grafana alert rule
+- alert: StellarTxFailureSpike
+  expr: increase(stellar_tx_failures_total[5m]) > 3
+  for: 2m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Stellar transaction failures spiking"
+    description: "{{ $value }} permanent failures in the last 5 minutes"
+```
+
+### Health Endpoint
+
+`GET /health/ready` includes a `stellar` section with:
+- Horizon node connectivity status and response time
+- Active retry configuration (`maxRetries`, `baseDelayMs`, etc.)
+- Pointer to `/metrics` for time-series data
+
 ## Future Enhancements
 
 - [ ] Persistent queue storage (Redis/Database)
 - [ ] Distributed queue for multi-instance deployments
-- [ ] Advanced metrics and alerting
 - [ ] Transaction priority adjustment based on age
 - [ ] Automatic fee adjustment for insufficient fee errors
 - [ ] Transaction batching for improved throughput

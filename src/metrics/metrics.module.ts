@@ -24,6 +24,9 @@ import {
   ActivePatientsTotalGauge,
   ActiveProvidersTotalGauge,
   SubscriptionsActiveGauge,
+  StellarTxAttemptsCounter,
+  StellarTxRetriesCounter,
+  StellarTxFailuresCounter,
 } from './custom-metrics.service';
 import { HttpMetricsInterceptor } from './interceptors/http-metrics.interceptor';
 import { DbMetricsSubscriber } from './subscribers/db-metrics.subscriber';
@@ -76,6 +79,10 @@ import { QUEUE_NAMES } from '../queues/queue.constants';
     ActivePatientsTotalGauge,
     ActiveProvidersTotalGauge,
     SubscriptionsActiveGauge,
+    // Stellar recovery metric providers
+    StellarTxAttemptsCounter,
+    StellarTxRetriesCounter,
+    StellarTxFailuresCounter,
     // Interceptor, subscriber, collectors
     HttpMetricsInterceptor,
     DbMetricsSubscriber,

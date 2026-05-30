@@ -11,11 +11,13 @@ import { StellarTransactionQueueService } from './services/stellar-transaction-q
 import { StellarRecoveryManagerService } from './services/stellar-recovery-manager.service';
 import { StellarRetryStoreService } from './services/stellar-retry-store.service';
 import { CircuitBreakerModule } from '../common/circuit-breaker/circuit-breaker.module';
+import { MetricsModule } from '../metrics/metrics.module';
 
 @Module({
   imports: [
     ConfigModule,
     CircuitBreakerModule,
+    MetricsModule,
     HttpModule.register({
       timeout: 10000,
       maxRedirects: 5,
