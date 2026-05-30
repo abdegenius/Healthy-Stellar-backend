@@ -50,6 +50,7 @@ export enum AuditSeverity {
 @Index(['userId', 'createdAt'])
 @Index(['action', 'createdAt'])
 @Index(['patientIdHash', 'createdAt'])
+@Index(['patientIdHash', 'action', 'createdAt'])
 @Index(['severity', 'createdAt'])
 @Index(['ipAddress', 'createdAt'])
 export class AuditLog {

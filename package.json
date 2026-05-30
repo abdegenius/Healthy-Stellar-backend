@@ -59,6 +59,7 @@
     "generate:sdk": "bash scripts/generate-sdk.sh",
     "build:sdk": "cd packages/sdk && npm run build",
     "test:sdk": "cd packages/sdk && npm test",
+    "check:circular": "madge --circular --extensions ts src/ --ts-config tsconfig.json",
     "check:migrations": "node scripts/check-migration-safety.js",
     "generate:contract-types": "node scripts/generate-contract-types.js",
     "check:contract-types": "node scripts/check-contract-types.js",
@@ -170,6 +171,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
+    "madge": "^8.0.0",
     "@nestjs/cli": "^11.0.16",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/testing": "^11.1.12",
