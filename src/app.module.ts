@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ConfigDriftService } from './config/config-drift.service';
 import { envValidationSchema } from './config/env.validation';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
@@ -73,6 +73,7 @@ import { IdempotencyInterceptor } from './idempotency/idempotency.interceptor';
 import { DlqModule } from './dlq/dlq.module';
 import { OperatorRunbookModule } from './operator-runbook/operator-runbook.module';
 import { IncidentModule } from './incident/incident.module';
+import { PiiRedactionInterceptor } from './common/interceptors/pii-redaction.interceptor';
 
 @Module({
   imports: [
@@ -124,7 +125,7 @@ import { IncidentModule } from './incident/incident.module';
     HealthModule,
     MetricsModule,
     NotificationsModule,
-    QueueModule.forRoot({ isWorker: false }), // Main app only has queue service, no processors
+    QueueModule.forRoot({ isWorker: false }),
     FhirModule,
     AccessControlModule,
     JobsModule,
@@ -145,16 +146,13 @@ import { IncidentModule } from './incident/incident.module';
     ProjectionsModule,
     CqrsModule,
     ProviderPatientModule,
- feat/data-consistency-checker
     ConsistencyCheckerModule,
-
     WebhooksModule,
     IdempotencyModule,
     DlqModule,
     OperatorRunbookModule,
     IncidentModule,
     EventEmitterModule.forRoot(),
- main
   ],
   controllers: [AppController],
   providers: [
