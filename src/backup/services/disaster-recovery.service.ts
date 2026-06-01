@@ -43,7 +43,15 @@ export class DisasterRecoveryService {
     private backupLogRepository: Repository<BackupLog>,
     @InjectRepository(RecoveryTest)
     private recoveryTestRepository: Repository<RecoveryTest>,
-  ) {}
+  ) {
+    this.validateRequiredConfiguration();
+  }
+
+  private validateRequiredConfiguration(): void {
+    if (!this.encryptionKey) {
+      throw new Error('BACKUP_ENCRYPTION_KEY environment variable is required for DisasterRecoveryService');
+    }
+  }
 
   async createRecoveryPlan(backupId: string): Promise<RecoveryPlan> {
     const backup = await this.backupLogRepository.findOne({ where: { id: backupId } });

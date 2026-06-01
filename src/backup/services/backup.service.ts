@@ -117,7 +117,15 @@ export class BackupService {
   constructor(
     @InjectRepository(BackupLog)
     private backupLogRepository: Repository<BackupLog>,
-  ) {}
+  ) {
+    this.validateRequiredConfiguration();
+  }
+
+  private validateRequiredConfiguration(): void {
+    if (!this.encryptionKey) {
+      throw new Error('BACKUP_ENCRYPTION_KEY environment variable is required for BackupService');
+    }
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async scheduledFullBackup() {
