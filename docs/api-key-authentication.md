@@ -4,6 +4,50 @@
 
 This document describes the implementation of API key-based authentication for hospital information systems and automated integrations that cannot perform Stellar wallet signing.
 
+## Security Model
+
+### MFA Bypass — Intentional Design
+
+API key authentication **bypasses MFA** by design. This is intentional for machine-to-machine (M2M) integrations that cannot perform interactive TOTP-based MFA verification.
+
+| Auth Method | Intended User | MFA Enforced | Session Validation | Authorization Model |
+|---|---|---|---|---|
+| JWT (Bearer token) | Interactive human users (patients, healthcare staff, admins) | ✅ Yes | ✅ Yes | RBAC policies + role-based guards |
+| API Key (X-API-Key header) | Automated systems, hospital integrations, CI/CD pipelines | ❌ No (M2M only) | ❌ N/A | Scope-based (`read:records`, `write:records`, `read:patients`) |
+
+### Architectural Separation
+
+JWT and API key authentication operate as **completely separate identity domains**:
+
+- **JWT auth** attaches `request.user` as a `JwtPayload` (`userId`, `email`, `role`, `mfaEnabled`, `sessionId`, `organizationId`) — used for interactive user session management with MFA step-up.
+- **API key auth** attaches `request.user` as `{ type: 'api_key', apiKey: <ApiKeyEntity> }` — used for scoped machine access without user identity.
+- The two auth paths are **never combined** on the same endpoint.
+- All downstream guards expecting `JwtPayload` (`RolesGuard`, `AdminGuard`, `PolicyGuard`, `RecordAccessGuard`, `PatientOwnerGuard`) will **not function** with API key auth.
+
+### Scope-Based Authorization
+
+API keys use `ApiKeyScope` for authorization instead of RBAC policies:
+
+```typescript
+enum ApiKeyScope {
+  READ_RECORDS = 'read:records',      // Read medical records
+  WRITE_RECORDS = 'write:records',    // Write/update records
+  READ_PATIENTS = 'read:patients',    // Read patient information
+}
+```
+
+### When to Use Each Method
+
+- **Use JWT (interactive login)** for: patients, healthcare staff, admin dashboard users — anyone who needs RBAC policies, MFA enforcement, and session management.
+- **Use API keys** for: hospital information system integrations, external EMR sync, automated data import/export, CI/CD pipelines — any scenario where a human is not interactively authenticating.
+
+### HIPAA Considerations
+
+- API keys accessing PHI should be treated as **machine accounts** with equivalent audit trails.
+- All API key operations (creation, revocation, usage) are logged via the audit system.
+- API keys support expiration and revocation for lifecycle management.
+- Access to patient data through API keys is governed by scopes, not user-level RBAC — ensure scopes are set to the minimum necessary.
+
 ## Architecture
 
 ### Components

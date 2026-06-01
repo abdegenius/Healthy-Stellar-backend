@@ -1,6 +1,11 @@
-import { Controller, Get, UseGuards, Version, VERSION_NEUTRAL } from '@nestjs/common';
+import { Controller, Get, UseGuards, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator, HealthCheckResult } from '@nestjs/terminus';
+import {
+  HealthCheck,
+  HealthCheckService,
+  TypeOrmHealthIndicator,
+  HealthCheckResult,
+} from '@nestjs/terminus';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CircuitBreakerService } from '../common/circuit-breaker/circuit-breaker.service';
@@ -28,8 +33,7 @@ interface DependencyCheck {
 }
 
 @ApiTags('health')
-@Version(VERSION_NEUTRAL)
-@Controller('health')
+@Controller({ path: 'health', version: VERSION_NEUTRAL })
 @Public()
 export class HealthController {
   private readonly dependencies: DependencyCheck[] = [

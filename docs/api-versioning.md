@@ -15,16 +15,18 @@ app.enableVersioning({
 ```
 
 The `defaultVersion` means:
-- Requests to `/records` (no prefix) are treated as `/v1/records`
+
+- Unversioned legacy controllers are governed by the v1 lifecycle policy
+- Controllers or handlers decorated with `@Version('1')` are served at `/v1/...`
 - `VERSION_NEUTRAL` controllers (e.g. `GET /api`, health checks) respond without any prefix
 
 ---
 
 ## Available Versions
 
-| Version | Status     | Base URL | Sunset Date          |
-|---------|------------|----------|----------------------|
-| v1      | Current    | `/v1`    | —                    |
+| Version | Status  | Base URL | Sunset Date |
+| ------- | ------- | -------- | ----------- |
+| v1      | Current | `/v1`    | —           |
 
 Discover versions programmatically:
 
@@ -33,6 +35,7 @@ GET /api
 ```
 
 Response:
+
 ```json
 {
   "versions": [
@@ -63,15 +66,22 @@ export class RecordsController { ... }
 Deprecated endpoints return the following response headers:
 
 | Header        | Value                                      |
-|---------------|--------------------------------------------|
+| ------------- | ------------------------------------------ |
 | `Deprecation` | `true`                                     |
 | `Sunset`      | RFC 7231 date when the endpoint is removed |
 | `Link`        | Alternative route (`rel="alternate"`)      |
 
+All versioned API responses also include lifecycle metadata:
+
+| Header               | Value                                |
+| -------------------- | ------------------------------------ |
+| `API-Version`        | Effective API version, e.g. `v1`     |
+| `API-Version-Status` | `current`, `deprecated`, or `sunset` |
+
 After the sunset date, deprecated endpoints return:
 
-| Status Code | Meaning |
-|-------------|---------|
+| Status Code | Meaning                                                  |
+| ----------- | -------------------------------------------------------- |
 | `410 Gone`  | Endpoint has reached end-of-life and is no longer served |
 
 Example:
@@ -134,7 +144,7 @@ async findAllV1() { ... }
 
 ### 4. Update the versions registry
 
-Add the new version to `src/versioning/api-versions.controller.ts`:
+Add the new version to `src/versioning/api-version-lifecycle.policy.ts`:
 
 ```typescript
 {
@@ -145,11 +155,35 @@ Add the new version to `src/versioning/api-versions.controller.ts`:
 }
 ```
 
+Every routable API version must have a lifecycle policy. If a request reaches a
+versioned controller that is not listed in this registry, the request fails with
+`500 Internal Server Error` so missing lifecycle policy is caught during release
+testing instead of silently bypassing deprecation and removal rules.
+
+### 5. Deprecate and remove old versions
+
+When a version is superseded, update its policy:
+
+```typescript
+{
+  version: '1',
+  status: 'deprecated',
+  releaseDate: '2024-01-01',
+  baseUrl: '/v1',
+  sunsetDate: 'Wed, 01 Jan 2027 00:00:00 GMT',
+  replacementVersion: '2',
+}
+```
+
+Deprecated versions return `Deprecation`, `Sunset`, and replacement `Link`
+headers until the sunset date. After that date, or when status is changed to
+`sunset`, the whole version returns `410 Gone`.
+
 ---
 
 ## Client Migration Checklist
 
-- [ ] Update base URL from `/records` → `/v1/records` (or keep using the default — both work)
+- [ ] Update base URL from unversioned routes to `/v1/...` for explicitly versioned APIs
 - [ ] Watch for `Deprecation: true` response headers — these signal upcoming breaking changes
 - [ ] Check `Sunset` header for the removal date
 - [ ] Follow the `Link` header to find the replacement endpoint
@@ -159,15 +193,15 @@ Add the new version to `src/versioning/api-versions.controller.ts`:
 
 ## Breaking vs Non-Breaking Changes
 
-| Change type                        | Requires new version? |
-|------------------------------------|-----------------------|
-| Adding a new optional field        | No                    |
-| Adding a new endpoint              | No                    |
-| Removing a field                   | Yes                   |
-| Changing a field type              | Yes                   |
-| Changing HTTP status codes         | Yes                   |
-| Removing an endpoint               | Yes (deprecate first) |
-| Renaming a query parameter         | Yes                   |
+| Change type                 | Requires new version? |
+| --------------------------- | --------------------- |
+| Adding a new optional field | No                    |
+| Adding a new endpoint       | No                    |
+| Removing a field            | Yes                   |
+| Changing a field type       | Yes                   |
+| Changing HTTP status codes  | Yes                   |
+| Removing an endpoint        | Yes (deprecate first) |
+| Renaming a query parameter  | Yes                   |
 
 ---
 
@@ -175,5 +209,5 @@ Add the new version to `src/versioning/api-versions.controller.ts`:
 
 - `VERSION_NEUTRAL` is used for infrastructure endpoints: `GET /api`, `GET /health`, `GET /metrics`
 - The global `DeprecationInterceptor` automatically injects deprecation headers and enforces `410 Gone` when route-level sunset dates are reached
-- The global `ApiVersionLifecycleInterceptor` enforces version lifecycle policy (current/deprecated/sunset) for URI-prefixed versions
-- `defaultVersion: ['1', VERSION_NEUTRAL]` ensures backward compatibility: clients not sending a version prefix still hit v1
+- The global `ApiVersionLifecycleInterceptor` enforces version lifecycle policy (current/deprecated/sunset) for URI-prefixed versions and default-version requests without a `/v{n}` prefix
+- `defaultVersion: ['1', VERSION_NEUTRAL]` keeps unversioned legacy controllers under the v1 lifecycle policy while allowing explicitly neutral infrastructure endpoints

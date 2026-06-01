@@ -16,7 +16,8 @@ export const API_VERSION_LIFECYCLE_POLICIES: ApiVersionLifecyclePolicy[] = [
     status: 'current',
     releaseDate: '2024-01-01',
     baseUrl: '/v1',
-    changelog: 'https://github.com/joel-metal/Healthy-Stellar-backend/blob/main/docs/api-versioning.md#v1',
+    changelog:
+      'https://github.com/Healthy-Stellar/Healthy-Stellar-backend/blob/main/docs/api-versioning.md#v1',
   },
   // Example for future rollout:
   // {

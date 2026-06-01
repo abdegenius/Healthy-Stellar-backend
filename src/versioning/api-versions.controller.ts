@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_VERSION_LIFECYCLE_POLICIES } from './api-version-lifecycle.policy';
 
@@ -17,7 +17,7 @@ export interface ApiVersionInfo {
  * regardless of the URI version prefix.
  */
 @ApiTags('API Versioning')
-@Controller('api')
+@Controller({ path: 'api', version: VERSION_NEUTRAL })
 export class ApiVersionsController {
   @Get()
   @ApiOperation({

@@ -1,5 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, VersioningType, Controller, Get, Version, VERSION_NEUTRAL } from '@nestjs/common';
+import {
+  INestApplication,
+  VersioningType,
+  Controller,
+  Get,
+  Version,
+  VERSION_NEUTRAL,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import * as request from 'supertest';
 import { DeprecationInterceptor } from '../common/interceptors/deprecation.interceptor';
@@ -57,12 +64,38 @@ class TestV3Controller {
   }
 }
 
+@Controller('test-v4')
+class TestV4Controller {
+  @Version('4')
+  @Get()
+  getV4() {
+    return { version: 4 };
+  }
+}
+
+@Controller('test-v5')
+class TestV5Controller {
+  @Version('5')
+  @Get()
+  getV5() {
+    return { version: 5 };
+  }
+}
+
 @Controller('test-neutral')
 class TestNeutralController {
   @Version(VERSION_NEUTRAL)
   @Get()
   getNeutral() {
     return { neutral: true };
+  }
+}
+
+@Controller('test-legacy')
+class TestLegacyController {
+  @Get()
+  getLegacy() {
+    return { legacy: true };
   }
 }
 
@@ -95,21 +128,37 @@ describe('API Versioning (routing)', () => {
       sunsetDate: 'Wed, 01 Jan 2025 00:00:00 GMT',
       replacementVersion: '1',
     },
+    {
+      version: '5',
+      status: 'deprecated',
+      releaseDate: '2023-01-01',
+      baseUrl: '/v5',
+      sunsetDate: 'Wed, 01 Jan 2025 00:00:00 GMT',
+      replacementVersion: '1',
+    },
   ];
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [TestV1Controller, TestV2Controller, TestV3Controller, TestNeutralController],
+      controllers: [
+        TestV1Controller,
+        TestV2Controller,
+        TestV3Controller,
+        TestV4Controller,
+        TestV5Controller,
+        TestNeutralController,
+        TestLegacyController,
+      ],
     }).compile();
 
     app = module.createNestApplication();
 
-    app.enableVersioning({ type: VersioningType.URI });
+    app.enableVersioning({ type: VersioningType.URI, defaultVersion: ['1', VERSION_NEUTRAL] });
     app.useGlobalInterceptors(new ApiVersionLifecycleInterceptor(policies, now));
     app.useGlobalInterceptors(new DeprecationInterceptor(app.get(Reflector)));
 
     await app.init();
-    httpApp = app.getHttpAdapter().getInstance();
+    httpApp = app.getHttpServer();
   });
 
   afterAll(async () => {
@@ -119,6 +168,8 @@ describe('API Versioning (routing)', () => {
   it('GET /v1/test-v1 routes to v1 controller', async () => {
     const res = await request(httpApp).get('/v1/test-v1').expect(200);
     expect(res.body.version).toBe(1);
+    expect(res.headers['api-version']).toBe('v1');
+    expect(res.headers['api-version-status']).toBe('current');
   });
 
   it('GET /v2/test-v1 routes to v2 controller', async () => {
@@ -128,6 +179,8 @@ describe('API Versioning (routing)', () => {
 
   it('deprecated version returns deprecation headers', async () => {
     const res = await request(httpApp).get('/v2/test-v1').expect(200);
+    expect(res.headers['api-version']).toBe('v2');
+    expect(res.headers['api-version-status']).toBe('deprecated');
     expect(res.headers['deprecation']).toBe('true');
     expect(res.headers['sunset']).toBe('Wed, 01 Jan 2030 00:00:00 GMT');
     expect(res.headers['link']).toContain('/v1');
@@ -138,9 +191,29 @@ describe('API Versioning (routing)', () => {
     expect(String(res.body.message)).toContain('API version v3 is no longer available');
   });
 
+  it('deprecated version returns 410 Gone after its sunset date', async () => {
+    const res = await request(httpApp).get('/v5/test-v5').expect(410);
+    expect(String(res.body.message)).toContain('API version v5 is no longer available');
+  });
+
+  it('unversioned legacy route is still governed by the default v1 lifecycle policy', async () => {
+    const res = await request(httpApp).get('/test-legacy').expect(200);
+    expect(res.body.legacy).toBe(true);
+    expect(res.headers['api-version']).toBe('v1');
+    expect(res.headers['api-version-status']).toBe('current');
+  });
+
+  it('fails closed when a routed API version is missing lifecycle policy', async () => {
+    const res = await request(httpApp).get('/v4/test-v4').expect(500);
+    expect(String(res.body.message)).toContain(
+      'API version v4 is not registered in the lifecycle policy',
+    );
+  });
+
   it('VERSION_NEUTRAL controller responds without version prefix', async () => {
     const res = await request(httpApp).get('/test-neutral').expect(200);
     expect(res.body.neutral).toBe(true);
+    expect(res.headers['api-version']).toBeUndefined();
   });
 
   it('deprecated endpoint returns Deprecation header', async () => {

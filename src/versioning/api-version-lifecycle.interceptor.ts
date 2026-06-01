@@ -3,8 +3,11 @@ import {
   ExecutionContext,
   GoneException,
   Injectable,
+  InternalServerErrorException,
   NestInterceptor,
+  VERSION_NEUTRAL,
 } from '@nestjs/common';
+import { VERSION_METADATA } from '@nestjs/common/constants';
 import { Observable } from 'rxjs';
 import {
   API_VERSION_LIFECYCLE_POLICIES,
@@ -16,6 +19,7 @@ export class ApiVersionLifecycleInterceptor implements NestInterceptor {
   constructor(
     private readonly policies: ApiVersionLifecyclePolicy[] = API_VERSION_LIFECYCLE_POLICIES,
     private readonly nowProvider: () => Date = () => new Date(),
+    private readonly defaultVersion = '1',
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -23,13 +27,23 @@ export class ApiVersionLifecycleInterceptor implements NestInterceptor {
     const request = http.getRequest();
     const response = http.getResponse();
 
-    const version = this.extractUriVersion(request?.originalUrl ?? request?.url ?? '');
+    const version = this.resolveEffectiveVersion(
+      context,
+      request?.originalUrl ?? request?.url ?? '',
+    );
     if (!version) return next.handle();
 
     const policy = this.policies.find((p) => p.version === version);
-    if (!policy) return next.handle();
+    if (!policy) {
+      throw new InternalServerErrorException(
+        `API version v${version} is not registered in the lifecycle policy.`,
+      );
+    }
 
-    if (policy.status === 'deprecated') {
+    response.setHeader('API-Version', `v${policy.version}`);
+    response.setHeader('API-Version-Status', policy.status);
+
+    if (policy.status === 'deprecated' || this.isSunset(policy)) {
       response.setHeader('Deprecation', 'true');
       if (policy.sunsetDate) response.setHeader('Sunset', policy.sunsetDate);
       if (policy.replacementVersion) {
@@ -55,9 +69,42 @@ export class ApiVersionLifecycleInterceptor implements NestInterceptor {
   }
 
   private buildSunsetMessage(policy: ApiVersionLifecyclePolicy): string {
-    const replacement = policy.replacementVersion ? ` Use /v${policy.replacementVersion} instead.` : '';
+    const replacement = policy.replacementVersion
+      ? ` Use /v${policy.replacementVersion} instead.`
+      : '';
     const sunset = policy.sunsetDate ? ` Sunset date: ${policy.sunsetDate}.` : '';
     return `API version v${policy.version} is no longer available.${sunset}${replacement}`.trim();
+  }
+
+  private resolveEffectiveVersion(context: ExecutionContext, urlPath: string): string | null {
+    const uriVersion = this.extractUriVersion(urlPath);
+    if (uriVersion) return uriVersion;
+
+    const routeVersion = this.getRouteVersion(context);
+    if (routeVersion === null) return null;
+    if (routeVersion) return routeVersion;
+
+    return this.defaultVersion;
+  }
+
+  private getRouteVersion(context: ExecutionContext): string | null | undefined {
+    const handlerVersion = this.normalizeVersion(
+      Reflect.getMetadata(VERSION_METADATA, context.getHandler()),
+    );
+    if (handlerVersion !== undefined) return handlerVersion;
+
+    return this.normalizeVersion(Reflect.getMetadata(VERSION_METADATA, context.getClass()));
+  }
+
+  private normalizeVersion(version: unknown): string | null | undefined {
+    if (version === undefined) return undefined;
+    if (version === VERSION_NEUTRAL) return null;
+    if (Array.isArray(version)) {
+      const concreteVersion = version.find((item) => item !== VERSION_NEUTRAL);
+      return concreteVersion === undefined ? null : String(concreteVersion);
+    }
+
+    return String(version);
   }
 
   private extractUriVersion(urlPath: string): string | null {

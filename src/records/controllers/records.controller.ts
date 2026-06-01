@@ -48,10 +48,10 @@ import { AdminGuard } from '../../auth/guards/admin.guard';
 import { JwtPayload } from '../../auth/services/auth-token.service';
 import { RecordResponseDto } from '../dto/record-response.dto';
 import { RecordAccessGuard } from '../guards/record-access.guard';
+import { DeprecatedRoute } from '../../common/decorators/deprecated.decorator';
 
 @ApiTags('Records')
-@Version('1')
-@Controller('records')
+@Controller({ path: 'records', version: '1' })
 export class RecordsController {
   constructor(
     private readonly recordsService: RecordsService,
@@ -73,7 +73,11 @@ export class RecordsController {
       },
     }),
   )
-  async uploadRecord(@Body() dto: CreateRecordDto, @UploadedFile() file: Express.Multer.File, @Req() req: any) {
+  async uploadRecord(
+    @Body() dto: CreateRecordDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
     if (!file) {
       throw new BadRequestException('Encrypted record file is required');
     }
