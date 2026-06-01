@@ -176,16 +176,39 @@ Swagger documentation will be available at `http://localhost:3000/api`
 
 ### Environment Variables
 
-- `DB_HOST` - Database host (default: localhost)
-- `DB_PORT` - Database port (default: 5432)
-- `DB_USERNAME` - Database username (default: postgres)
-- `DB_PASSWORD` - Database password (default: postgres)
-- `DB_NAME` - Database name (default: healthy_stellar)
-- `PORT` - Application port (default: 3000)
-- `NODE_ENV` - Environment (development/production)
-- `UPLOAD_PATH` - File upload directory (default: ./storage/uploads)
-- `JWT_SECRET` - JWT secret key for authentication
-- `JWT_EXPIRES_IN` - JWT expiration time
+All required and optional environment variables are documented in [`.env.example`](.env.example).
+Copy it to `.env` and fill in the values for your environment:
+
+```bash
+cp .env.example .env
+```
+
+The file is organised into sections:
+
+| Section | Key variables |
+|---|---|
+| Core Application | `NODE_ENV`, `PORT`, `APP_URL`, `APP_DOMAIN` |
+| Database | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` |
+| Encryption / PHI | `ENCRYPTION_KEY`, `PHI_ENCRYPTION_KEY` |
+| JWT & Auth | `JWT_SECRET`, `JWT_REFRESH_SECRET`, `SESSION_SECRET` |
+| CORS & Security | `ALLOWED_ORIGINS`, `CORS_ORIGIN`, `ADMIN_IP_ALLOWLIST` |
+| Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
+| Email | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASSWORD` |
+| Stellar Blockchain | `STELLAR_NETWORK`, `STELLAR_SECRET_KEY`, `STELLAR_CONTRACT_ID` |
+| IPFS | `IPFS_HOST`, `IPFS_PORT`, `IPFS_URL` |
+| Webhooks | `IPFS_WEBHOOK_SECRET`, `STELLAR_WEBHOOK_SECRET`, `QUEUE_HMAC_SECRET` |
+| OIDC / SSO | `OIDC_PROVIDERS`, `OIDC_{PROVIDER}_CLIENT_ID`, … |
+| Logging | `LOG_LEVEL`, `LOKI_HOST` |
+| Metrics & Tracing | `METRICS_TOKEN`, `OTEL_EXPORTER_OTLP_ENDPOINT` |
+| Backup | `BACKUP_DIR`, `BACKUP_ENCRYPTION_KEY`, `BACKUP_RETENTION_DAYS` |
+| Feature Flags | `TELEMEDICINE_ENABLED`, `SURGICAL_MANAGEMENT_ENABLED` |
+
+Variables marked **REQUIRED** in `.env.example` must be set before the application will start.
+Secrets should be generated with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
 ## Security Headers
 

@@ -17,87 +17,124 @@ import { QueueEventsListener } from './queue-events.listener';
 import { RecordsModule } from '../records/records.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
-@Module({
-  imports: [
-    BlockchainModule,
-    // Needed by EventIndexingProcessor to emit internal domain events in worker mode
-    EventEmitterModule.forRoot(),
-    // Needed by EventIndexingProcessor to persist per-record event streams
-    RecordsModule,
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get('REDIS_PORT', 6379),
-          password: configService.get('REDIS_PASSWORD'),
-          db: configService.get('REDIS_DB', 0),
-          maxRetriesPerRequest: null,
-          retryStrategy: createRedisRetryStrategy(),
-          reconnectOnError: (err: Error) => {
-            // Reconnect on READONLY errors (e.g. Redis failover)
-            return err.message.includes('READONLY');
-          },
-        },
-        defaultJobOptions: {
-          attempts: 5,
-          backoff: { type: 'exponential', delay: 2000 },
-          removeOnComplete: { count: 1000 },
-          removeOnFail: { count: 5000 },
-        },
-      }),
-      inject: [ConfigService],
-    }),
-    BullModule.registerQueue(
-      { name: QUEUE_NAMES.STELLAR_TRANSACTIONS },
-      { name: QUEUE_NAMES.CONTRACT_WRITES },
-      { name: QUEUE_NAMES.IPFS_UPLOADS },
-      { name: QUEUE_NAMES.EVENT_INDEXING },
-      { name: QUEUE_NAMES.EMAIL_NOTIFICATIONS },
-      { name: QUEUE_NAMES.REPORTS },
-      { name: QUEUE_NAMES.EHR_IMPORT },
-    ),
-    BullBoardModule.forRoot({
-      route: '/admin/queues',
-      adapter: ExpressAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.STELLAR_TRANSACTIONS,
-      adapter: BullMQAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.CONTRACT_WRITES,
-      adapter: BullMQAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.IPFS_UPLOADS,
-      adapter: BullMQAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.EVENT_INDEXING,
-      adapter: BullMQAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.EMAIL_NOTIFICATIONS,
-      adapter: BullMQAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.REPORTS,
-      adapter: BullMQAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.EHR_IMPORT,
-      adapter: BullMQAdapter,
-    }),
-  ],
-  controllers: [QueueController, EhrImportDlqController],
-  providers: [
-    QueueService,
-    StellarTransactionProcessor,
-    ContractWritesProcessor,
-    EventIndexingProcessor,
-    QueueEventsListener,
-  ],
-  exports: [QueueService, BullModule],
-})
-export class QueueModule {}
+/**
+ * QueueModule
+ *
+ * Supports two modes via the forRoot() factory:
+ *
+ *  isWorker: false (default — used by AppModule / HTTP server)
+ *    Registers queues and QueueService so the HTTP layer can dispatch jobs.
+ *    Does NOT register processor workers to avoid resource contention with
+ *    the HTTP request pipeline.
+ *
+ *  isWorker: true (used by WorkerModule / dedicated worker process)
+ *    Registers queues AND all @Processor workers so they actively consume
+ *    jobs from Redis. The HTTP server is not started in this mode.
+ */
+@Module({})
+export class QueueModule {
+  static forRoot(options: { isWorker: boolean } = { isWorker: false }): DynamicModule {
+    // Processors are only registered in worker mode to prevent the HTTP
+    // server from competing with the dedicated worker process for jobs.
+    const workerProviders = options.isWorker
+      ? [
+          StellarTransactionProcessor,
+          ContractWritesProcessor,
+          EventIndexingProcessor,
+          QueueEventsListener,
+        ]
+      : [QueueEventsListener];
+
+    return {
+      module: QueueModule,
+      imports: [
+        // BlockchainModule provides StellarContractService used by ContractWritesProcessor.
+        BlockchainModule,
+
+        // RecordsModule provides RecordEventStoreService used by EventIndexingProcessor.
+        RecordsModule,
+
+        // EventEmitterModule is needed by EventIndexingProcessor to emit domain events.
+        EventEmitterModule.forRoot(),
+
+        // Redis connection shared by all queues.
+        BullModule.forRootAsync({
+          imports: [ConfigModule],
+          useFactory: (configService: ConfigService) => ({
+            connection: {
+              host: configService.get('REDIS_HOST', 'localhost'),
+              port: configService.get('REDIS_PORT', 6379),
+              password: configService.get('REDIS_PASSWORD'),
+              db: configService.get('REDIS_DB', 0),
+              maxRetriesPerRequest: null,
+              retryStrategy: createRedisRetryStrategy(),
+              reconnectOnError: (err: Error) => {
+                // Reconnect on READONLY errors (e.g. Redis failover / sentinel).
+                return err.message.includes('READONLY');
+              },
+            },
+            defaultJobOptions: {
+              attempts: 5,
+              backoff: { type: 'exponential', delay: 2000 },
+              removeOnComplete: { count: 1000 },
+              removeOnFail: { count: 5000 },
+            },
+          }),
+          inject: [ConfigService],
+        }),
+
+        // Register all queues so both producers (QueueService) and consumers
+        // (@Processor workers) can reference them by name.
+        BullModule.registerQueue(
+          { name: QUEUE_NAMES.STELLAR_TRANSACTIONS },
+          { name: QUEUE_NAMES.CONTRACT_WRITES },
+          { name: QUEUE_NAMES.IPFS_UPLOADS },
+          { name: QUEUE_NAMES.EVENT_INDEXING },
+          { name: QUEUE_NAMES.EMAIL_NOTIFICATIONS },
+          { name: QUEUE_NAMES.REPORTS },
+          { name: QUEUE_NAMES.EHR_IMPORT },
+        ),
+
+        // Bull Board dashboard — only useful when the HTTP server is running.
+        BullBoardModule.forRoot({
+          route: '/admin/queues',
+          adapter: ExpressAdapter,
+        }),
+        BullBoardModule.forFeature({
+          name: QUEUE_NAMES.STELLAR_TRANSACTIONS,
+          adapter: BullMQAdapter,
+        }),
+        BullBoardModule.forFeature({
+          name: QUEUE_NAMES.CONTRACT_WRITES,
+          adapter: BullMQAdapter,
+        }),
+        BullBoardModule.forFeature({
+          name: QUEUE_NAMES.IPFS_UPLOADS,
+          adapter: BullMQAdapter,
+        }),
+        BullBoardModule.forFeature({
+          name: QUEUE_NAMES.EVENT_INDEXING,
+          adapter: BullMQAdapter,
+        }),
+        BullBoardModule.forFeature({
+          name: QUEUE_NAMES.EMAIL_NOTIFICATIONS,
+          adapter: BullMQAdapter,
+        }),
+        BullBoardModule.forFeature({
+          name: QUEUE_NAMES.REPORTS,
+          adapter: BullMQAdapter,
+        }),
+        BullBoardModule.forFeature({
+          name: QUEUE_NAMES.EHR_IMPORT,
+          adapter: BullMQAdapter,
+        }),
+      ],
+      controllers: [QueueController, EhrImportDlqController],
+      providers: [
+        QueueService,
+        ...workerProviders,
+      ],
+      exports: [QueueService, BullModule],
+    };
+  }
+}
