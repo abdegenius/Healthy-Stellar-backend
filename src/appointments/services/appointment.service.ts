@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Not, FindOptionsWhere } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { Appointment, AppointmentStatus, MedicalPriority } from '../entities/appointment.entity';
 import { DoctorAvailability } from '../entities/doctor-availability.entity';
@@ -23,6 +24,7 @@ export class AppointmentService {
     private availabilityRepository: Repository<DoctorAvailability>,
     private readonly jwtService: JwtService,
     private readonly auditService: AuditService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -89,7 +91,7 @@ export class AppointmentService {
       tenantId,
       appointmentDate,
       telemedicineRoomId: roomId,
-      telemedicineLink: roomId ? `https://telemedicine.app/room/${roomId}` : null,
+      telemedicineLink: roomId ? `${this.configService.get<string>('TELEMEDICINE_BASE_URL', 'https://telemedicine.app')}/room/${roomId}` : null,
     });
 
     const saved = await this.appointmentRepository.save(appointment);
