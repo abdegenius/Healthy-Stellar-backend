@@ -12,8 +12,7 @@ import { StellarTransactionRetryService } from './services/stellar-transaction-r
 import { StellarTransactionQueueService } from './services/stellar-transaction-queue.service';
 import { StellarRecoveryManagerService } from './services/stellar-recovery-manager.service';
 import { StellarRetryStoreService } from './services/stellar-retry-store.service';
-import { StellarPaymentVerificationService } from './services/stellar-payment-verification.service';
-import { HttpIdempotencyEntity } from '../idempotency/idempotency.entity';
+import { StellarTracingService } from './services/stellar-tracing.service';
 import { CircuitBreakerModule } from '../common/circuit-breaker/circuit-breaker.module';
 import { MetricsModule } from '../metrics/metrics.module';
 
@@ -35,6 +34,7 @@ import { MetricsModule } from '../metrics/metrics.module';
     StellarCacheService,
     StellarService,
     StellarWithBreakerService,
+    StellarTracingService,
     StellarTransactionRetryService,
     StellarRetryStoreService,
     StellarTransactionQueueService,
@@ -45,6 +45,7 @@ import { MetricsModule } from '../metrics/metrics.module';
     StellarFeeService,
     StellarService,
     StellarWithBreakerService,
+    StellarTracingService,
     StellarTransactionRetryService,
     StellarTransactionQueueService,
     StellarRecoveryManagerService,
