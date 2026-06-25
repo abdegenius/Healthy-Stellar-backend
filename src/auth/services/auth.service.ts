@@ -13,6 +13,7 @@ import { PasswordValidationService } from './password-validation.service';
 import { AuthTokenService } from './auth-token.service';
 import { MfaService } from './mfa.service';
 import { SessionManagementService } from './session-management.service';
+import { RefreshTokenStoreService } from './refresh-token-store.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
 import { RegisterDto, LoginDto, ChangePasswordDto } from '../dto/auth.dto';
 
@@ -42,6 +43,7 @@ export class AuthService {
     private authTokenService: AuthTokenService,
     private mfaService: MfaService,
     private sessionManagementService: SessionManagementService,
+    private refreshTokenStore: RefreshTokenStoreService,
     private auditLogService: AuditLogService,
   ) {}
 
@@ -129,6 +131,7 @@ export class AuthService {
       ipAddress,
       userAgent,
     );
+    await this.refreshTokenStore.store(sessionId, tokens.refreshToken);
 
     return {
       user: this.formatUser(savedUser),
@@ -253,6 +256,7 @@ export class AuthService {
       ipAddress,
       userAgent,
     );
+    await this.refreshTokenStore.store(sessionId, tokens.refreshToken);
 
     // Tamper-evident audit log
     this.auditLogService.log({
@@ -339,6 +343,7 @@ export class AuthService {
   async logout(userId: string, sessionId: string, ipAddress: string): Promise<void> {
     if (sessionId) {
       await this.sessionManagementService.revokeSession(sessionId);
+      await this.refreshTokenStore.revokeSession(sessionId);
     }
 
     await this.auditLogService.log({

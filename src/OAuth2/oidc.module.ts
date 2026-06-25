@@ -7,9 +7,12 @@ import { OidcIdentity } from './entities/oidc-identity.entity';
 import { OidcClientRegistry, OidcStrategy } from './oidc.strategy';
 import { OidcService } from './oidc.service';
 import { OidcController } from './oidc.controller';
+import { OAuth2Controller } from './oauth2.controller';
+import { PkceService } from './pkce.service';
 import { buildOidcConfig } from './oidc.config';
 import { UsersModule } from '../users/users.module';
 import { User } from '../auth/entities/user.entity';
+import { AuthModule } from '../auth/auth.module';
 
 /**
  * Self-contained OIDC / OAuth2 SSO module.
@@ -39,14 +42,13 @@ import { User } from '../auth/entities/user.entity';
     }),
     TypeOrmModule.forFeature([OidcIdentity, User]),
     UsersModule,
+    AuthModule,
   ],
   providers: [
-    // Provide the raw config for the registry
     {
       provide: 'OIDC_CONFIG',
       useFactory: () => buildOidcConfig(),
     },
-    // Registry needs the provider array
     {
       provide: OidcClientRegistry,
       useFactory: (config: ReturnType<typeof buildOidcConfig>) =>
@@ -55,8 +57,9 @@ import { User } from '../auth/entities/user.entity';
     },
     OidcStrategy,
     OidcService,
+    PkceService,
   ],
-  controllers: [OidcController],
-  exports: [OidcService, OidcClientRegistry],
+  controllers: [OidcController, OAuth2Controller],
+  exports: [OidcService, OidcClientRegistry, PkceService],
 })
 export class OidcModule {}

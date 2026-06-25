@@ -275,7 +275,10 @@ export class AuthController {
     if (!session) {
       throw new NotFoundException('Session not found');
     }
-    await this.sessionManagementService.revokeSession(id);
+    await Promise.all([
+      this.sessionManagementService.revokeSession(id),
+      this.refreshTokenStore.revokeSession(id),
+    ]);
     return { message: 'Session terminated' };
   }
 
@@ -296,7 +299,10 @@ export class AuthController {
     if (!session) {
       throw new NotFoundException('Session not found');
     }
-    await this.sessionManagementService.revokeSession(sessionId);
+    await Promise.all([
+      this.sessionManagementService.revokeSession(sessionId),
+      this.refreshTokenStore.revokeSession(sessionId),
+    ]);
     return { message: 'Session revoked' };
   }
 
@@ -313,7 +319,10 @@ export class AuthController {
 
     for (const session of sessions) {
       if (session.id !== currentSessionId) {
-        await this.sessionManagementService.revokeSession(session.id);
+        await Promise.all([
+          this.sessionManagementService.revokeSession(session.id),
+          this.refreshTokenStore.revokeSession(session.id),
+        ]);
       }
     }
 

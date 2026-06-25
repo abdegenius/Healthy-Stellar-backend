@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, MoreThan } from 'typeorm';
+import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { SessionEntity } from '../entities/session.entity';
 import { User } from '../entities/user.entity';

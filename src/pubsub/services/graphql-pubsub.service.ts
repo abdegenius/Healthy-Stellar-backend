@@ -367,6 +367,7 @@ export class GraphqlPubSubService implements OnModuleInit, OnModuleDestroy {
         }
       } finally {
         trackedIterators.delete(handle);
+        await liveIterator.return?.();
       }
     })();
   }

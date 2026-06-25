@@ -157,6 +157,7 @@ import { DevicesModule } from '../devices/devices.module';
           // graphql-ws (recommended transport) for GraphQL subscriptions
           subscriptions: {
             'graphql-ws': {
+              keepAlive: 10_000,
               onConnect: async (ctx: any) => {
                 const clientIp = ctx.extra?.clientIp || ctx.extra?.request?.ip || 'unknown';
 

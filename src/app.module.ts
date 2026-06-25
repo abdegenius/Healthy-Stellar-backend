@@ -10,6 +10,7 @@ import { I18nModule, AcceptLanguageResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { AuthModule } from './auth/auth.module';
 import { OidcModule } from './OAuth2/oidc.module';
+import { SecurityModule } from './security/security.module';
 import { AdminModule } from './admin/admin.module';
 import { BillingModule } from './billing/billing.module';
 import { MedicalRecordsModule } from './medical-records/medical-records.module';
@@ -110,6 +111,7 @@ import { PiiRedactionInterceptor } from './common/interceptors/pii-redaction.int
     I18nAppModule,
     AuthModule,
     OidcModule,
+    SecurityModule,
     AdminModule,
     BillingModule,
     MedicalRecordsModule,

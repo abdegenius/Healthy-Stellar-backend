@@ -1,10 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { EmergencyMedicalInfoService } from '../services/emergency-medical-info.service';
 import {
   CreateEmergencyMedicalInfoDto,
   UpdateEmergencyMedicalInfoDto,
 } from '../dto/emergency-medical-info.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('emergency-medical-info')
 export class EmergencyMedicalInfoController {
   constructor(private readonly service: EmergencyMedicalInfoService) {}
